@@ -14,7 +14,7 @@ void setup() {
 
   mobaBus.begin(); //initialize the controller
 
-  mobaBus.attachInterace(&can); //add the can bus interface to the controller
+  mobaBus.attachInterface(&can); //add the can bus interface to the controller
   mobaBus.attachModule(&servos); // add the PCA9685 module to the controller
 
 }
