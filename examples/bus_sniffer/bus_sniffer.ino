@@ -2,7 +2,7 @@
 
 #include <MobaBus.h>
 
-MobaBus mobaBus(); //MobaBus-controller
+MobaBus mobaBus(0); //MobaBus-controller
 
 MobaBus_CAN can(10, CAN_125KBPS, MCP_8MHZ, 2); //Can Bus interface
 
@@ -12,7 +12,7 @@ void setup() {
   Serial.println("MobaBus");
   Serial.println("--------------------------");
   mobaBus.begin();
-  mobaBus.attachInterace(&can); //add the can bus interface to the controller
+  mobaBus.attachInterface(&can); //add the can bus interface to the controller
 
 }
 
