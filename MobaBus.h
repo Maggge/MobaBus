@@ -66,7 +66,7 @@ public:
     /**
      * Instantiate MobaBus without EEPROM storage (Modules not stores settings and addresses!);
      */
-    MobaBus();
+    MobaBus(void);
 
     /**
      * Instantiate MobaBus with EEPROM storage (Modules stores settings and addresses);
@@ -111,7 +111,8 @@ public:
     void processPkg(MobaBus_Packet *pkg);
 
     /**
-     * Must called after attaching modules and before loop!
+     * Must called before attaching modules
+     * you can set the Addresses here for first boot, if EEPROM used, or every boot if EEPROM not used!
      */
     void begin(uint16_t accessorieAddress = 0, uint16_t feedbackAddress = 0, uint16_t boosterAddress = 0);
 

@@ -2,7 +2,7 @@
 
 #include <MobaBus.h>
 
-#include <MobaBus_TurnoutPCA.h> //Require: https://github.com/adafruit/Adafruit-PWM-Servo-Driver-Library
+#include <modules/MobaBus_TurnoutPCA.h> //Require: https://github.com/adafruit/Adafruit-PWM-Servo-Driver-Library
 
 MobaBus mobaBus(0, 8, 9); //MobaBus-controller instance with EEPROM, progamming Button and statusLED
 
@@ -12,9 +12,11 @@ MobaBus_TurnoutPCA servos(0x40, 70, 110, 230, true); // PCA9685 board with addre
 
 void setup() {
 
-  mobaBus.begin(); //initialize a controller instance
+  mobaBus.begin(); //initialize the controller
+
   mobaBus.attachInterace(&can); //add the can bus interface to the controller
   mobaBus.attachModule(&servos); // add the PCA9685 module to the controller
+
 }
 
 void loop() {

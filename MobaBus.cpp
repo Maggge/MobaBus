@@ -17,7 +17,7 @@
 
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+**/
 
 
 #include "MobaBus.h"
@@ -167,22 +167,30 @@ void MobaBus::begin(uint16_t accessorieAddress, uint16_t feedbackAddress, uint16
     pinMode(led, OUTPUT);
     digitalWrite(led, LOW);
 
-    bool firstboot = (EEPROM.read(eepromStart) != uint8_t(21));
-    Serial.print("Firstboot: ");
-    Serial.println(firstboot);
-
-    if(useEEPROM &! firstboot){
-        EEPROM.get(eepromStart+1, boosterAddr);
-        EEPROM.get(eepromStart+3, accessorieAddr);
-        EEPROM.get(eepromStart+5, feedbackAddr);
-        
-    }
+    if(useEEPROM){
+        if(EEPROM.read(eepromStart) == uint8_t(21)){
+            EEPROM.get(eepromStart+1, boosterAddr);
+            EEPROM.get(eepromStart+3, accessorieAddr);
+            EEPROM.get(eepromStart+5, feedbackAddr);
+        }
+        else{
+            Serial.print("Firstboot");
+            if(accessorieAddress != 0 || feedbackAddress != 0 || boosterAddress != 0){
+                accessorieAddr = accessorieAddress;
+                feedbackAddr = feedbackAddress;
+                boosterAddr = boosterAddress;
+                EEPROM.update(eepromStart, uint8_t(21));
+                EEPROM.update(eepromStart+1, boosterAddr);
+                EEPROM.update(eepromStart+3, accessorieAddr);
+                EEPROM.update(eepromStart+5, feedbackAddr);
+            }
+        }
+    }  
     else{
         accessorieAddr = accessorieAddress;
         feedbackAddr = feedbackAddress;
         boosterAddr = boosterAddress;
-    }
-    
+    }  
 }
 
 uint32_t MobaBus::progButton(){
