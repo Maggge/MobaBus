@@ -2,6 +2,8 @@
 
 #include <MobaBus.h>
 
+#include <MobaBus_TurnoutPCA.h> //Require: https://github.com/adafruit/Adafruit-PWM-Servo-Driver-Library
+
 MobaBus mobaBus(0, 8, 9); //MobaBus-controller instance with EEPROM, progamming Button and statusLED
 
 MobaBus_CAN can(10, CAN_125KBPS, MCP_8MHZ, 2); //Can Bus interface
