@@ -6,7 +6,7 @@ At the moment are included following modules:
 -  digital outputs wit 2 pins(for turnouts without end switch)
 -  digital inputs (like sensors or buttons) over arduino pins
 -  servos over arduino pins
--  servos over PCA9685 16-channel pwm driver.
+-  servos over PCA9685 16-channel pwm driver
 
 At the moment you can use up to 10 modules per arduino (in future maybe more).
 
