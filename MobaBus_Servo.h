@@ -1,5 +1,5 @@
 /**
-  MobaBus Turnout PCA9685
+  MobaBus Servo
 
   © 2021, Markus Mair. All rights reserved.
 
@@ -19,55 +19,38 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __MOBA_TURNOUTPCA__
-#define __MOBA_TURNOUTPCA__
+#ifndef __MOBABUS_SERVO__
+#define __MOBABUS_SERVO__
 
-#include <Arduino.h>
 #include "MobaBus.h"
-
 #include "MobaBus_Module.h"
 
-#include <Wire.h>
-#include <Adafruit_PWMServoDriver.h>
-
-#define SERVOMIN  100 // this is the 'minimum' pulse length count (out of 4096)
-#define SERVOMAX  550 // this is the 'maximum' pulse length count (out of 4096)575
+#include <Servo.h>
 
 #define SERVO_POWER_OFF 100 // ms after last step to power off the servo if autoPowerOff = true
 
-
-
-class MobaBus_TurnoutPCA : public MobaBus_Module{
+class MobaBus_Servo : public MobaBus_Module{
 private:
-    Adafruit_PWMServoDriver servoBoard;
-    
-    uint8_t angles[2];
+    Servo servo;
 
-    uint8_t actualAngle[16];
-    uint8_t targetAngle[16];
-    bool active[16];
-    int16_t remainingTime[16];
+    uint8_t pin;
+
+    uint8_t angles[2];
+    uint8_t actualAngle;
+    uint8_t targetAngle;
+    bool active;
 
     uint32_t lastMove;
     uint8_t moveSpeed;
 
-    bool powerOff;
-
+    bool autoPowerOff;
+    uint32_t powerOffT;
 
 public:
-
     /**
-     * Constructor for Turnouts with one PCA9685 module
-     * initialized with standard Address 0x40
+     * Constructor for Servo
      */
-    MobaBus_TurnoutPCA(uint8_t angle0, uint8_t angle1, uint8_t speed = 245, bool autoPowerOff = true);
-
-    /**
-     * Constructor for Turnouts with one or multiple PCA9685 modules
-     * @param addr of the module (standard = 0x40)
-     */
-    MobaBus_TurnoutPCA(uint16_t addr, uint8_t angle0, uint8_t angle1, uint8_t speed = 245, bool autoPowerOff = true);
-
+    MobaBus_Servo(uint8_t pin, uint8_t angle0, uint8_t angle1, uint8_t speed, bool autoPowerOff);
 
     uint8_t begin(bool useEEPROM, uint16_t address);
     void loop();
@@ -80,10 +63,7 @@ public:
   
     uint8_t programmAddress(uint16_t addr);
 
-    void setTurnout(uint8_t pin, uint8_t dir, bool power = true);
+    void setTurnout(bool dir, bool power);
 };
-
-
-
 
 #endif

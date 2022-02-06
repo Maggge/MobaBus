@@ -1,5 +1,5 @@
 /**
-  MobaBus Turnout PCA9685
+  MobaBus Servo PCA9685
 
   © 2021, Markus Mair. All rights reserved.
 
@@ -19,15 +19,15 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "MobaBus_TurnoutPCA.h"
+#include "MobaBus_ServoPCA.h"
 
 
-MobaBus_TurnoutPCA::MobaBus_TurnoutPCA(uint8_t angle0, uint8_t angle1, uint8_t speed, bool autoPowerOff = true){
-    MobaBus_TurnoutPCA(0x40, angle0, angle1, speed, autoPowerOff);
+MobaBus_ServoPCA::MobaBus_ServoPCA(uint8_t angle0, uint8_t angle1, uint8_t speed, bool autoPowerOff) {
+    MobaBus_ServoPCA(0x40, angle0, angle1, speed, autoPowerOff);
 }
 
-MobaBus_TurnoutPCA::MobaBus_TurnoutPCA(uint16_t addr, uint8_t angle0, uint8_t angle1, uint8_t speed, bool autoPowerOff = true) : 
-servoBoard(addr){
+MobaBus_ServoPCA::MobaBus_ServoPCA(uint16_t addr, uint8_t angle0, uint8_t angle1, uint8_t speed, bool autoPowerOff) {
+    servoBoard = Adafruit_PWMServoDriver(addr);
     powerOff = autoPowerOff;
     angles[0] = angle0;
     angles[1] = angle1;
@@ -36,7 +36,7 @@ servoBoard(addr){
     type = ACCESSORIE;
 }
 
-uint8_t MobaBus_TurnoutPCA::begin(bool useEEPROM, uint16_t address){
+uint8_t MobaBus_ServoPCA::begin(bool useEEPROM, uint16_t address){
     Serial.println("Module begin");
     servoBoard.begin();
     servoBoard.setPWMFreq(60);
@@ -54,7 +54,7 @@ uint8_t MobaBus_TurnoutPCA::begin(bool useEEPROM, uint16_t address){
     intitialized = true;
     return channels;
 }
-void MobaBus_TurnoutPCA::loop(){
+void MobaBus_ServoPCA::loop(){
     uint32_t actualTime = millis();
     if(actualTime >= lastMove + moveSpeed){
         lastMove = actualTime;
@@ -74,11 +74,9 @@ void MobaBus_TurnoutPCA::loop(){
             }
         }
     }
-    
-
 }
 
-void MobaBus_TurnoutPCA::loadConf(){
+void MobaBus_ServoPCA::loadConf(){
     if(controller == NULL) return;
     
     uint16_t configAddr = controller->getEEPROMAddress(moduleID);
@@ -91,7 +89,7 @@ void MobaBus_TurnoutPCA::loadConf(){
     configAddr += sizeof(EEPROM.get(configAddr, angles[1]));
 }
 
-void MobaBus_TurnoutPCA::storeConf(){
+void MobaBus_ServoPCA::storeConf(){
     if(controller == NULL) return;
     
     uint16_t configAddr = controller->getEEPROMAddress(moduleID);
@@ -102,7 +100,7 @@ void MobaBus_TurnoutPCA::storeConf(){
 
 }
 
-void MobaBus_TurnoutPCA::processPkg(MobaBus_Packet *pkg){
+void MobaBus_ServoPCA::processPkg(MobaBus_Packet *pkg){
     if(!intitialized) return;
     Serial.print("First Address: ");
     Serial.print(address);
@@ -119,7 +117,7 @@ void MobaBus_TurnoutPCA::processPkg(MobaBus_Packet *pkg){
     }
 }
 
-uint8_t MobaBus_TurnoutPCA::programmAddress(uint16_t addr){
+uint8_t MobaBus_ServoPCA::programmAddress(uint16_t addr){
     address = addr;
     Serial.print("Set Address ");
     Serial.print(address);
@@ -128,18 +126,18 @@ uint8_t MobaBus_TurnoutPCA::programmAddress(uint16_t addr){
     return channels;
 }
 
-void MobaBus_TurnoutPCA::setTurnout(uint8_t pin, uint8_t dir, bool power){
+void MobaBus_ServoPCA::setTurnout(uint8_t pin, uint8_t dir, bool power){
 
     if(power){
         targetAngle[pin] = angles[dir];
         uint8_t data[] = {dir};
         controller->sendPkg(ACCESSORIE, address + pin, INFO, 1, data);
-   }
-   else{
+    }
+    else{
         servoBoard.setPWM(pin, 0, 4096);
         targetAngle[pin] = actualAngle[pin];
         active[pin] = false;
-   }
+    }
 }
 
 
