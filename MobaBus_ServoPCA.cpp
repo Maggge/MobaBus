@@ -22,50 +22,44 @@
 #include "MobaBus_ServoPCA.h"
 
 
-MobaBus_ServoPCA::MobaBus_ServoPCA(uint8_t angle0, uint8_t angle1, uint8_t speed, bool autoPowerOff) {
+MobaBus_ServoPCA::MobaBus_ServoPCA(uint8_t angle0, uint8_t angle1, uint8_t speed, uint16_t autoPowerOff) {
     MobaBus_ServoPCA(0x40, angle0, angle1, speed, autoPowerOff);
 }
 
-MobaBus_ServoPCA::MobaBus_ServoPCA(uint16_t addr, uint8_t angle0, uint8_t angle1, uint8_t speed, bool autoPowerOff) {
+MobaBus_ServoPCA::MobaBus_ServoPCA(uint16_t addr, uint8_t angle0, uint8_t angle1, uint8_t speed, uint16_t autoPowerOff) {
+    init("MobaBus_ServoPCA", ACCESSORIE, 4, 16);
     servoBoard = Adafruit_PWMServoDriver(addr);
-    powerOff = autoPowerOff;
+    this->autoPowerOff = autoPowerOff;
     angles[0] = angle0;
     angles[1] = angle1;
     moveSpeed = (uint8_t)255 - speed;
-    channels = 16;
-    type = ACCESSORIE;
 }
 
-uint8_t MobaBus_ServoPCA::begin(bool useEEPROM, uint16_t address){
-    Serial.println("Module begin");
+bool MobaBus_ServoPCA::begin(){
     servoBoard.begin();
     servoBoard.setPWMFreq(60);
-    
-    programmAddress(address);
 
-    loadConf();
-    for(int i = 0; i < channels; i++){
+    for(int i = 0; i < usedChannels(); i++){
         int startAngle = (int)(((float)angles[0] + (float)angles[1]) / 2.0);
         servoBoard.setPWM(i, 0, map(startAngle, 0, 180, SERVOMIN, SERVOMAX));
         actualAngle[i] = startAngle;
         setTurnout(i, 0);
         delay(20);
     }
-    intitialized = true;
-    return channels;
+    return true;
 }
 void MobaBus_ServoPCA::loop(){
     uint32_t actualTime = millis();
     if(actualTime >= lastMove + moveSpeed){
         lastMove = actualTime;
-        for(int i = 0; i < channels; i++){
+        for(int i = 0; i < usedChannels(); i++){
             if(actualAngle[i] != targetAngle[i]){
                 actualAngle[i] += targetAngle[i] > actualAngle[i] ? 1 : -1;
                 servoBoard.setPWM(i, 0, map(actualAngle[i], 0, 180, SERVOMIN, SERVOMAX));
                 active[i] = true;
-                remainingTime[i] = SERVO_POWER_OFF;
+                remainingTime[i] = autoPowerOff;
             }
-            else if(active[i] && powerOff){
+            else if(active[i] && autoPowerOff){
                     remainingTime[i] -= moveSpeed;
                     if(remainingTime[i] <= 0){
                         active[i] = false;
@@ -76,54 +70,32 @@ void MobaBus_ServoPCA::loop(){
     }
 }
 
-void MobaBus_ServoPCA::loadConf(){
-    if(controller == NULL) return;
-    
-    uint16_t configAddr = controller->getEEPROMAddress(moduleID);
-    uint16_t storedAddress;
-    configAddr += sizeof(EEPROM.get(configAddr, storedAddress));
-    
-    if(address != storedAddress) return;
-
-    configAddr += sizeof(EEPROM.get(configAddr, angles[0]));
-    configAddr += sizeof(EEPROM.get(configAddr, angles[1]));
+int MobaBus_ServoPCA::loadConf(uint16_t eepromAddress){
+    int idx = MobaBus_Module::loadConf(eepromAddress);
+    if(idx < 0){
+        return -2;
+    }
+    idx += sizeof(EEPROM.get(idx, angles));
+    return idx;
 }
 
-void MobaBus_ServoPCA::storeConf(){
-    if(controller == NULL) return;
-    
-    uint16_t configAddr = controller->getEEPROMAddress(moduleID);
-    
-    configAddr += sizeof(EEPROM.put(configAddr, address));
-    configAddr += sizeof(EEPROM.put(configAddr, angles[0]));
-    configAddr += sizeof(EEPROM.put(configAddr, angles[1]));
-
+int MobaBus_ServoPCA::storeConf(uint16_t eepromAddress){
+    int idx = MobaBus_Module::storeConf(eepromAddress);
+    if(idx < 0){
+        return -2;
+    }
+    idx += sizeof(EEPROM.put(idx, angles));
+    return idx;
 }
 
 void MobaBus_ServoPCA::processPkg(MobaBus_Packet *pkg){
-    if(!intitialized) return;
-    Serial.print("First Address: ");
-    Serial.print(address);
-    Serial.print(" Last Address: ");
-    Serial.println(address + channels);
-    if(pkg->meta.type == type && pkg->meta.address >= address && pkg->meta.address < address+channels){
-        if(pkg->meta.cmd == SET){
-            setTurnout(pkg->meta.address - address, pkg->data[0], pkg->data[1]);
-        }
-        else if(pkg->meta.cmd == GET){
-            uint8_t data[] = {(targetAngle[pkg->meta.address - address] == angles[0] ? 0 : 1)};
-            controller->sendPkg(ACCESSORIE, pkg->meta.address, INFO, 1, data);
-        }
+    if(pkg->meta.cmd == SET){
+        setTurnout(pkg->meta.address - address(), pkg->data[0], pkg->data[1]);
     }
-}
-
-uint8_t MobaBus_ServoPCA::programmAddress(uint16_t addr){
-    address = addr;
-    Serial.print("Set Address ");
-    Serial.print(address);
-    Serial.print(" - ");
-    Serial.println(address + channels - 1);
-    return channels;
+    else if(pkg->meta.cmd == GET){
+        uint8_t data[] = {(targetAngle[pkg->meta.address - address()] == angles[0] ? 0 : 1)};
+        controller->sendPkg(ACCESSORIE, pkg->meta.address, INFO, 1, data);
+    }
 }
 
 void MobaBus_ServoPCA::setTurnout(uint8_t pin, uint8_t dir, bool power){
@@ -131,7 +103,7 @@ void MobaBus_ServoPCA::setTurnout(uint8_t pin, uint8_t dir, bool power){
     if(power){
         targetAngle[pin] = angles[dir];
         uint8_t data[] = {dir};
-        controller->sendPkg(ACCESSORIE, address + pin, INFO, 1, data);
+        controller->sendPkg(ACCESSORIE, address() + pin, INFO, 1, data);
     }
     else{
         servoBoard.setPWM(pin, 0, 4096);

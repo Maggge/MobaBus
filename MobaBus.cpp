@@ -77,38 +77,44 @@ uint8_t MobaBus::attachModule(MobaBus_Module *module){
 
     for(uint8_t i = 0; i < MAX_MODULES; i++){
         if(modules[i] == NULL){
-            modules[i] = module;
-            module->controller = this;
-            module->moduleID = i;
-            switch (module->type)
-            {
-            case ACCESSORIE:
-                Serial.println("Accessorie");
-                if(accessorieAddr == 0){
-                    accessorieAddr = programmMode(ACCESSORIE);                 
-                }
-                accessorieAddr += module->begin(useEEPROM, accessorieAddr);             
-                break;
-            case FEEDBACK:
-                if(feedbackAddr == 0){
-                    feedbackAddr = programmMode(FEEDBACK);
-                }
-                feedbackAddr += module->begin(useEEPROM, feedbackAddr);
-                break;
-            case BOOSTER:
-                if(boosterAddr == 0){
-                    boosterAddr = programmMode(BOOSTER);
-                }
-                boosterAddr += module->begin(useEEPROM, boosterAddr);
-                break;
-            default:
-                break;
+            if(attachModule(module, i)){
+                return i;
             }
-            return i;
+            else{
+                return 254;
+            }
         }
     }
     return 255;
 
+}
+
+bool MobaBus::attachModule(MobaBus_Module *module, uint8_t id){
+    module->controller = this;
+    module->moduleID = id; 
+    Serial.print("Attach " + module->moduleName() + " with ID ");
+    Serial.print(module->moduleID);
+    Serial.print("...");
+    if(module->begin()){
+        modules[id] = module;
+        
+        Serial.println(" OK!");
+        if(useEEPROM){
+            Serial.print("Load config on EEPROM Addr ");
+            Serial.print(getEEPROMAddress(id));
+            Serial.print("....");
+            Serial.println(module->loadConf(getEEPROMAddress(id)));
+            if(module->address() == 0){
+                addressModule(id);
+                module->storeConf(getEEPROMAddress(id));
+            }
+        } 
+    }
+    else{
+        Serial.println("Failed!");
+        return false;
+    }
+    return true;
 }
     
 bool MobaBus::dettachModule(MobaBus_Module *module){
@@ -134,7 +140,7 @@ bool MobaBus::dettachModule(uint8_t id){
 
 int16_t MobaBus::getEEPROMAddress(uint8_t moduleId){
     if(!useEEPROM || moduleId >= MAX_MODULES) return -1;
-    return eepromStart + ((moduleId+1) * MODULE_MAX_CONFIG_SIZE);
+    return eepromStart + 1 + ((moduleId) * MODULE_MAX_CONFIG_SIZE);
 }
 
 uint8_t MobaBus::sendPkg(MobaBus_Packet *pkg){
@@ -156,41 +162,44 @@ uint8_t MobaBus::sendPkg(MobaDevType type, uint16_t addr, uint8_t port, MobaCmd 
     return err;
 }
 
+void MobaBus::begin(bool routing=true, void (*firstboot)()=NULL){
+    this->routing = routing;
+    if(useEEPROM){
+        pinMode(progPin, INPUT_PULLUP);
+        pinMode(led, OUTPUT);
+        digitalWrite(led, HIGH);
+        delay(1000);
+        digitalWrite(led,LOW);
+        if(EEPROM.read(eepromStart) != 21){
+            if(firstboot != NULL){
+                firstboot();
+            }
+            EEPROM.update(eepromStart, 21);
+        }
+        return;
+    }
+    if(firstboot != NULL){
+        firstboot();
+    }
+}
+
+
 void MobaBus::loop(){
     MobaBus_Packet pkg;
     loop(&pkg);
 }
 
-void MobaBus::begin(uint16_t accessorieAddress, uint16_t feedbackAddress, uint16_t boosterAddress){
-
-    pinMode(progPin, INPUT_PULLUP);
-    pinMode(led, OUTPUT);
-    digitalWrite(led, LOW);
-
-    if(useEEPROM){
-        if(EEPROM.read(eepromStart) == uint8_t(21)){
-            EEPROM.get(eepromStart+1, boosterAddr);
-            EEPROM.get(eepromStart+3, accessorieAddr);
-            EEPROM.get(eepromStart+5, feedbackAddr);
+bool MobaBus::loop(MobaBus_Packet *pkg){
+    if(progButton() >= 10000){
+        reset();
+    }
+    for(int i = 0; i < MAX_MODULES; i++){
+        if(modules[i] != NULL && modules[i]->initialized()){
+            modules[i]->loop();
         }
-        else{
-            Serial.print("Firstboot");
-            if(accessorieAddress != 0 || feedbackAddress != 0 || boosterAddress != 0){
-                accessorieAddr = accessorieAddress;
-                feedbackAddr = feedbackAddress;
-                boosterAddr = boosterAddress;
-                EEPROM.update(eepromStart, uint8_t(21));
-                EEPROM.update(eepromStart+1, boosterAddr);
-                EEPROM.update(eepromStart+3, accessorieAddr);
-                EEPROM.update(eepromStart+5, feedbackAddr);
-            }
-        }
-    }  
-    else{
-        accessorieAddr = accessorieAddress;
-        feedbackAddr = feedbackAddress;
-        boosterAddr = boosterAddress;
-    }  
+    }
+
+    return receive(pkg);
 }
 
 uint32_t MobaBus::progButton(){
@@ -206,73 +215,18 @@ uint32_t MobaBus::progButton(){
         uint32_t t = millis() - lastChange;
         return t;
     }
-    else if(!pressed && digitalRead(progPin)){
+    else if(!pressed && digitalRead(progPin) == LOW){
         lastChange = millis();
         pressed = true;
+        Serial.println("Button pressed");
     }
     else if(pressed && digitalRead(progPin) == HIGH){
         pressed = false;
         lastChange = millis();
+        Serial.println("Button released");
         return 0;
     }
     return 0;
-}
-
-uint16_t MobaBus::programmMode(MobaDevType type){
-    MobaBus_Packet pkg;
-    bool prog = false;
-
-    uint32_t ledTime = 0;
-    uint32_t ledIntervall = 5000;
-    Serial.print("Wait for addressing!");
-    switch (type)
-    {
-    case ACCESSORIE:
-        ledIntervall = 1000;
-        break;
-    case FEEDBACK:
-        ledIntervall = 2000;
-        break;
-    case BOOSTER:
-        ledIntervall = 3000;
-        break;
-    default:
-        break;
-    }
-
-    digitalWrite(led, HIGH);
-
-    while (true)
-    {   
-        if(progButton() >= 5000 && !prog){   
-            prog = true;
-            ledIntervall = 200;
-            Serial.println("Prog...");
-        }
-
-        if(millis() - ledTime > ledIntervall){
-            ledTime = millis();
-            digitalWrite(led, !digitalRead(led));
-        }     
-
-        if(receive(&pkg) && prog && pkg.meta.type == type && pkg.meta.cmd == SET){
-            if(useEEPROM){
-                EEPROM.update(eepromStart, (uint8_t)21);
-                EEPROM.put(eepromStart+(type * 2) - 1, pkg.meta.address);
-            }
-            return pkg.meta.address;
-        }
-    }   
-}
-
-bool MobaBus::loop(MobaBus_Packet *pkg){
-    for(int i = 0; i < MAX_MODULES; i++){
-        if(modules[i] != NULL){
-            modules[i]->loop();
-        }
-    }
-
-    return receive(pkg);
 }
 
 bool MobaBus::receive(MobaBus_Packet *pkg){
@@ -294,9 +248,81 @@ bool MobaBus::receive(MobaBus_Packet *pkg){
 void MobaBus::processPkg(MobaBus_Packet *pkg){
     for(int i = 0; i < MAX_MODULES; i++){
         if(modules[i] != NULL){
-            if(pkg->meta.type == modules[i]->type){
+            if(modules[i]->initialized() && pkg->meta.type == modules[i]->getModuleType() && pkg->meta.address >= modules[i]->address() && pkg->meta.address < modules[i]->address()+modules[i]->usedChannels()){
                 modules[i]->processPkg(pkg);
             }
         }
     }
+}
+
+bool MobaBus::addressModule(uint8_t id){
+    Serial.println("Start Addressing...");
+    bool progMode = false;
+    bool ledState = false;
+    uint32_t lastBlink = 0;
+    uint32_t progStart = 0;
+    uint16_t d;
+    MobaBus_Packet pkg;
+    switch (modules[id]->getModuleType())
+    {
+    case FEEDBACK:
+        d = 1000;
+        break;
+    case ACCESSORIE:
+        d = 500;
+        break;
+    default:
+        d = 2000;
+        break;
+    } 
+    while (true){
+        uint32_t actualTime = millis();
+        if((lastBlink + (progMode ? 200 : d)) <= actualTime){
+            digitalWrite(led, !ledState);
+            ledState = !ledState;
+            lastBlink = actualTime;
+        }
+
+        if(!progMode && progButton() >= 5000 ){
+            progMode = true;
+            progStart = actualTime;
+            Serial.println("Wait for Address");
+        }
+        else if(progButton() >= 10000){
+            reset();
+        }
+
+        if(progMode && progStart + 30000 <= actualTime){
+            progMode= false;
+            Serial.println("Exit progmode");
+        }
+
+        if(receive(&pkg) && progMode){
+            if(pkg.meta.type == modules[id]->getModuleType() && pkg.meta.cmd == SET){
+                modules[id]->programmAddress(pkg.meta.address);
+                digitalWrite(led, LOW);
+                return true;
+            }
+        }
+    }
+}
+
+void MobaBus::reset(){
+    Serial.println("Reset....");
+    for(int i = 0; i < 10; i++){
+        digitalWrite(led, HIGH);
+        delay(200);
+        digitalWrite(led, LOW);
+        delay(200);
+    }
+    if(useEEPROM){
+        for(int i = 0; i < EEPROM.length(); i++){
+            EEPROM.update(i, 0);
+        }
+    }
+    digitalWrite(led, HIGH);
+    Serial.println("Reboot");
+    delay(1000);
+    wdt_enable(WDTO_15MS);
+    while (true);
 }

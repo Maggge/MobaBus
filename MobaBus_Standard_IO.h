@@ -44,15 +44,13 @@ public:
      */
     MobaBus_Sensor(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint8_t pin5, uint8_t pin6, uint8_t pin7, uint8_t pin8, bool pullup);
 
-    uint8_t begin(bool useEEPROM, uint16_t address);
+    bool begin();
     void loop();
 
-    void loadConf();
-    void storeConf();
+    int loadConf(uint16_t eepromAddress) override;
+    int storeConf(uint16_t eepromAddress) override;
 
     void processPkg(MobaBus_Packet *pkg);
-    
-    uint8_t programmAddress(uint16_t addr);
 };
 
 class MobaBus_Output : public MobaBus_Module{
@@ -64,22 +62,16 @@ private:
 public:
     MobaBus_Output(uint8_t pin, bool inverted);
 
-    uint8_t begin(bool useEEPROM, uint16_t address);
+    bool begin();
     void loop();
 
-    void loadConf();
-    void storeConf();
-
+    int loadConf(uint16_t eepromAddress) override;
+    int storeConf(uint16_t eepromAddress) override;
 
     void processPkg(MobaBus_Packet *pkg);
-  
-    uint8_t programmAddress(uint16_t addr);
 
     void setTurnout(bool dir);
-
 };
-
-#define AUTO_POWER_OFF 500 // ms after switching the pins turn off to prevent a burn out of the turnout drive
 
 class MobaBus_Output_2pin : public MobaBus_Module{
 private:
@@ -90,21 +82,18 @@ private:
      bool active;
      uint32_t powerOffT;
 
-     bool autoPowerOff;   
+     uint16_t autoPowerOff;   
 
 public:
-    MobaBus_Output_2pin(uint8_t pin1, uint8_t pin2, bool inverted, bool autoPowerOff);
+    MobaBus_Output_2pin(uint8_t pin1, uint8_t pin2, bool inverted, uint16_t autoPowerOff);
 
-    uint8_t begin(bool useEEPROM, uint16_t address);
+    bool begin();
     void loop();
 
-    void loadConf();
-    void storeConf();
-
+    int loadConf(uint16_t eepromAddress) override;
+    int storeConf(uint16_t eepromAddress) override;
 
     void processPkg(MobaBus_Packet *pkg);
-  
-    uint8_t programmAddress(uint16_t addr);
 
     void setTurnout(bool dir, bool power);
 };

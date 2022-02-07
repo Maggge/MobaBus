@@ -33,11 +33,9 @@
 #define SERVOMIN  100 // this is the 'minimum' pulse length count (out of 4096)
 #define SERVOMAX  550 // this is the 'maximum' pulse length count (out of 4096)575
 
-#define SERVO_POWER_OFF 100 // ms after last step to power off the servo if autoPowerOff = true
 
 
-
-class MobaBus_ServoPCA : public MobaBus_Module{
+class MobaBus_ServoPCA : public MobaBus_Module {
 private:
     Adafruit_PWMServoDriver servoBoard;
     
@@ -51,7 +49,7 @@ private:
     uint32_t lastMove;
     uint8_t moveSpeed;
 
-    bool powerOff;
+    uint16_t autoPowerOff;
 
 
 public:
@@ -60,25 +58,23 @@ public:
      * Constructor for Turnouts with one PCA9685 module
      * initialized with standard Address 0x40
      */
-    MobaBus_ServoPCA(uint8_t angle0, uint8_t angle1, uint8_t speed, bool autoPowerOff);
+    MobaBus_ServoPCA(uint8_t angle0, uint8_t angle1, uint8_t speed, uint16_t autoPowerOff);
 
     /**
      * Constructor for Turnouts with one or multiple PCA9685 modules
      * @param addr of the module (standard = 0x40)
      */
-    MobaBus_ServoPCA(uint16_t addr, uint8_t angle0, uint8_t angle1, uint8_t speed, bool autoPowerOff);
+    MobaBus_ServoPCA(uint16_t addr, uint8_t angle0, uint8_t angle1, uint8_t speed, uint16_t autoPowerOff);
 
 
-    uint8_t begin(bool useEEPROM, uint16_t address);
+    bool begin();
     void loop();
 
-    void loadConf();
-    void storeConf();
+    int loadConf(uint16_t eepromAddress) override;
+    int storeConf(uint16_t eepromAddress) override;
 
 
     void processPkg(MobaBus_Packet *pkg);
-  
-    uint8_t programmAddress(uint16_t addr);
 
     void setTurnout(uint8_t pin, uint8_t dir, bool power = true);
 };

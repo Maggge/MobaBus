@@ -45,10 +45,6 @@ bool MobaBus_CAN::begin(){
     return (lastErr == 0);
 }
 
-bool MobaBus_CAN::end(){
-    return true;
-}
-
 bool MobaBus_CAN::Send(MobaDevType type, uint16_t target, uint8_t port, MobaCmd cmd,  uint8_t len, uint8_t *data) {
     uint32_t addr = CanAddrAssemble(type, target, port, cmd);
     if(addr == 0) return false;

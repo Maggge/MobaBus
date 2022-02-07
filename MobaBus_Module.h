@@ -32,42 +32,54 @@
 class MobaBus;
 
 class MobaBus_Module{
-
+private:
+  String _moduleName;
+  uint8_t _moduleTypeID;
+  uint8_t _channels;
+  MobaDevType _type;
+  uint16_t _address;
+  bool _intitialized = false;
 public:
 
-    uint8_t moduleID;
+  uint8_t moduleID;
 
-    uint16_t address;
+  MobaBus *controller;
 
-    MobaDevType type;
+  bool useConfigStorage;
 
-    MobaBus *controller;
+  /**
+   * @return channels used
+   */
+  virtual bool begin()=0;
+  virtual void loop()=0;
+  virtual void processPkg(MobaBus_Packet *pkg)=0;
 
-    bool useConfigStorage;
+  void init(String name, MobaDevType type, uint8_t typeID, uint8_t usedChannels);
 
-    uint8_t channels;
+ 
 
-    bool intitialized = false;
+  /**
+   * @loadConf/storeConf
+   * 
+   * @param eepromAddress where to store/load the conf
+   * @return next EEProm index, -1 on failure;
+   */
+  virtual int loadConf(uint16_t eepromAddress);
+  virtual int storeConf(uint16_t eepromAddress);
 
-    /**
-     * @return channels used
-     */
-    virtual uint8_t begin(bool useEEPROM, uint16_t address);
-    virtual void loop();
+  /**
+      * Addresses the Module
+      * @param first address of the module
+      * @return the amount of used addresses
+      */
+  uint8_t programmAddress(uint16_t address);
 
-    virtual void loadConf();
-    virtual void storeConf();
+  String moduleName();
+  uint8_t usedChannels();
+  MobaDevType getModuleType();
+  uint16_t address();
 
-    virtual void processPkg(MobaBus_Packet *pkg);
-
-    /**
-        * Addresses the Module
-        * @param first address of the module
-        * @return the amount of used addresses
-        */
-    virtual uint8_t programmAddress(uint16_t addr);
+  bool initialized();
 };
-
-
 
 #endif

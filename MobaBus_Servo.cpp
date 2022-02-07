@@ -21,31 +21,24 @@
 
 #include "MobaBus_Servo.h"
 
-MobaBus_Servo::MobaBus_Servo(uint8_t pin, uint8_t angle0, uint8_t angle1, uint8_t speed, bool autoPowerOff){
+MobaBus_Servo::MobaBus_Servo(uint8_t pin, uint8_t angle0, uint8_t angle1, uint8_t speed, uint16_t autoPowerOff) {
+    init("MobaBus_Servo", ACCESSORIE, 3, 1);
     this->pin = pin;
     this->autoPowerOff = autoPowerOff;
     angles[0] = angle0;
     angles[1] = angle1;
-    moveSpeed = (uint8_t)255 - speed;
-    type = ACCESSORIE;
+    moveSpeed = (uint8_t)255 - speed;;
 }
 
-uint8_t MobaBus_Servo::begin(bool useEEPROM, uint16_t address){
-    Serial.println("Module begin");
-    Serial.println("Drive Servo at 90 degrees");
-    
-    programmAddress(address);
-
+bool MobaBus_Servo::begin(){
     servo.attach(pin);
     servo.write(90);
     actualAngle = 90;
     if(autoPowerOff){
-        delay(SERVO_POWER_OFF);
+        delay(autoPowerOff);
         servo.detach();
     }
-
-    intitialized = true;
-    return 1;    
+    return true;    
 }
 
 void MobaBus_Servo::loop(){
@@ -59,7 +52,7 @@ void MobaBus_Servo::loop(){
             }
             actualAngle += targetAngle > actualAngle ? 1 : -1;
             servo.write(actualAngle);
-            powerOffT = actualTime + SERVO_POWER_OFF;
+            powerOffT = actualTime + autoPowerOff;
             }
         else if(autoPowerOff && active && powerOffT <= actualTime){    
             active = false;
@@ -68,38 +61,58 @@ void MobaBus_Servo::loop(){
     }
 }
 
-void MobaBus_Servo::loadConf() {
-    return;
+int MobaBus_Servo::loadConf(uint16_t eepromAddress){
+    int idx = MobaBus_Module::loadConf(eepromAddress);
+    if(idx < 0){
+        Serial.println("Load config failed!");
+        return -2;
+    }
+    idx += sizeof(EEPROM.get(idx, autoPowerOff));
+    idx += sizeof(EEPROM.get(idx, moveSpeed));
+    idx += sizeof(EEPROM.get(idx, angles));
+    return idx;
 }
 
-void MobaBus_Servo::storeConf() {
-    return;
+int MobaBus_Servo::storeConf(uint16_t eepromAddress){
+    int idx = MobaBus_Module::storeConf(eepromAddress);
+    if(idx < 0){
+        Serial.println("Store config failed!");
+        return -2;
+    }
+    idx += sizeof(EEPROM.put(idx, autoPowerOff));
+    idx += sizeof(EEPROM.put(idx, moveSpeed));
+    idx += sizeof(EEPROM.put(idx, angles));
+    return idx;
+}
+
+void MobaBus_Servo::setAngles(uint8_t angle0, uint8_t angle1){
+    angles[0] = angle0;
+    angles[1] = angle1;
+}
+
+void MobaBus_Servo::setSpeed(uint8_t speed){
+    moveSpeed = 255 - speed;
+}
+
+void MobaBus_Servo::setAutoPowerOff(uint16_t ms){
+    autoPowerOff = ms;
 }
 
 void MobaBus_Servo::processPkg(MobaBus_Packet *pkg){
-    if(pkg->meta.type == type && pkg->meta.address == address){
-        if(pkg->meta.cmd == SET){
-            setTurnout((bool)pkg->data[0], (bool)pkg->data[1]);
-        }
-        else if(pkg->meta.cmd == GET){
-            uint8_t data[] = {(actualAngle == angles[1])};
-            controller->sendPkg(ACCESSORIE, address, INFO, 1, data);
-        }
+    if(pkg->meta.cmd == SET){
+        setTurnout((bool)pkg->data[0], (bool)pkg->data[1]);
     }
-}
-
-uint8_t MobaBus_Servo::programmAddress(uint16_t addr){
-    address = addr;
-    Serial.print("Set Address ");
-    Serial.println(address);
-    return 1;
+    else if(pkg->meta.cmd == GET){
+        uint8_t data[] = {(actualAngle == angles[1])};
+        controller->sendPkg(ACCESSORIE, address(), INFO, 1, data);
+    }
 }
 
 void MobaBus_Servo::setTurnout(bool dir, bool power){
     if(power){
         targetAngle = angles[dir];
         uint8_t data[] = {dir};
-        controller->sendPkg(ACCESSORIE, address + pin, INFO, 1, data);
+        controller->sendPkg(ACCESSORIE, address(), INFO, 1, data);
     }
     else{
         targetAngle = actualAngle;

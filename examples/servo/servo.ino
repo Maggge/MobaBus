@@ -8,7 +8,7 @@ MobaBus mobaBus(0, 8, 9); //MobaBus-controller instance with EEPROM, progamming 
 
 MobaBus_CAN can(10, CAN_125KBPS, MCP_8MHZ, 2); //Can Bus interface
 
-MobaBus_Servo servo(7, 70, 110, 230, true); // Servo attached to pin 7, angle0=70°, angle1=110°, moving speed=230 and autoPowerOff=on
+MobaBus_Servo servo(7, 70, 110, 230, 100); // Servo attached to pin 7, angle0=70°, angle1=110°, moving speed=230 and autoPowerOff=100ms
 
 void setup() {
 

@@ -31,7 +31,6 @@ public:
     virtual bool begin() = 0;
     virtual bool Send(MobaDevType type, uint16_t target, uint8_t port, MobaCmd cmd,  uint8_t len, uint8_t *data) = 0;
     virtual bool Receive(MobaBus_Packet &pkg)=0;
-    virtual bool end() = 0;
 };
 
 

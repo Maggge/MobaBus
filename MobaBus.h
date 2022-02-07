@@ -24,6 +24,7 @@
 #define __MobaBus__
 
 #include <Arduino.h>
+#include <avr/wdt.h>
 
 #include <EEPROM.h>	
 
@@ -58,9 +59,8 @@ private:
     bool pressed = false;
     uint32_t progButton();
 
-    uint16_t accessorieAddr = 0;
-    uint16_t feedbackAddr = 0;
-    uint16_t boosterAddr = 0;
+    bool loadConfig();
+    bool saveConfig();
     
 public:
     /**
@@ -78,7 +78,7 @@ public:
 
     /**
      * Attach a Bus Interface
-     * @return the id of the interface, return 255 if not successfull
+     * @return the id of the interface, return 254 if initialize not successfull, 255 if no empty module slot
      */
     uint8_t attachInterface(MobaBus_Interface *interface);
 
@@ -94,6 +94,8 @@ public:
      * @return the id of the module, return 255 if not successfull
      */
     uint8_t attachModule(MobaBus_Module *module);
+
+    bool attachModule(MobaBus_Module *module, uint8_t id);
 
     /**
      * Detach a Module
@@ -112,16 +114,18 @@ public:
 
     /**
      * Must called before attaching modules
+     * @param routing specifies if the packets are routed between different interfaces
      * you can set the Addresses here for first boot, if EEPROM used, or every boot if EEPROM not used!
      */
-    void begin(uint16_t accessorieAddress = 0, uint16_t feedbackAddress = 0, uint16_t boosterAddress = 0);
+    void begin(bool routing=true, void (*firstboot)()=NULL);
 
     void loop();
     bool loop(MobaBus_Packet *pkg);
 
     bool receive(MobaBus_Packet *pkg);
 
-    uint16_t programmMode(MobaDevType type);
-    
+    bool addressModule(uint8_t id);
+
+    void reset();
 };
 #endif

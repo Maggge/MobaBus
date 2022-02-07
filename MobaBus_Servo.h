@@ -27,9 +27,7 @@
 
 #include <Servo.h>
 
-#define SERVO_POWER_OFF 100 // ms after last step to power off the servo if autoPowerOff = true
-
-class MobaBus_Servo : public MobaBus_Module{
+class MobaBus_Servo : public MobaBus_Module {
 private:
     Servo servo;
 
@@ -43,25 +41,26 @@ private:
     uint32_t lastMove;
     uint8_t moveSpeed;
 
-    bool autoPowerOff;
+    uint16_t autoPowerOff;
     uint32_t powerOffT;
 
 public:
     /**
      * Constructor for Servo
      */
-    MobaBus_Servo(uint8_t pin, uint8_t angle0, uint8_t angle1, uint8_t speed, bool autoPowerOff);
+    MobaBus_Servo(uint8_t pin, uint8_t angle0, uint8_t angle1, uint8_t speed, uint16_t autoPowerOff);
 
-    uint8_t begin(bool useEEPROM, uint16_t address);
+    bool begin();
     void loop();
 
-    void loadConf();
-    void storeConf();
+    int loadConf(uint16_t eepromAddress) override;
+    int storeConf(uint16_t eepromAddress) override;
 
+    void setAngles(uint8_t angle0, uint8_t angle1);
+    void setSpeed(uint8_t speed);
+    void setAutoPowerOff(uint16_t ms);
 
     void processPkg(MobaBus_Packet *pkg);
-  
-    uint8_t programmAddress(uint16_t addr);
 
     void setTurnout(bool dir, bool power);
 };
