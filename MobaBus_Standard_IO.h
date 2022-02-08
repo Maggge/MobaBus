@@ -30,9 +30,9 @@ private:
     uint8_t pin[8];
     bool pullUp;
 
-    bool state[8];
+    bool state[8] = {0,0,0,0,0,0,0,0};
 
-    uint32_t debounce[8];
+    uint32_t debounce[8] = {0,0,0,0,0,0,0,0};;
 
     void sendStates();
     

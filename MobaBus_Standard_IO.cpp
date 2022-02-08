@@ -36,7 +36,9 @@ MobaBus_Sensor::MobaBus_Sensor(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t
 
 bool MobaBus_Sensor::begin(){
     for (int i = 0; i < 8; i++){
-        pinMode(pin[i], pullUp ? INPUT_PULLUP : INPUT);
+        if(pin[i] != 0) {
+            pinMode(pin[i], pullUp ? INPUT_PULLUP : INPUT);
+        }
     }
     return true;
 }
@@ -44,24 +46,26 @@ bool MobaBus_Sensor::begin(){
 void MobaBus_Sensor::loop(){
     bool newState;
     for(int i = 0; i < 8; i++){
-        if(debounce[i] < millis()){
-            newState = digitalRead(pin[i]) ? !pullUp : pullUp;
-            if(newState != state[i]){
-                debounce[i] = millis() + 80;
-                state[i] = newState;
-                sendStates();
+        if(pin[i] != 0) {
+            if(debounce[i] <= millis()){
+                newState = digitalRead(pin[i]) ? !pullUp : pullUp;
+                if(newState != state[i]){
+                    debounce[i] = millis() + 80;
+                    state[i] = newState;
+                    sendStates();
+                }
             }
         }
-        
     }
 }
 
 void MobaBus_Sensor::sendStates(){
-    uint8_t states;
+    uint8_t states = 0;
     for (int i = 0; i < 8; i++){
         states = states | (state[i] << i);
     }
-    controller->sendPkg(FEEDBACK, address(), SET, 1, &states);
+    uint8_t data[] = {states};
+    controller->sendPkg(FEEDBACK, address(), INFO, 1, data);
 }
 
 int MobaBus_Sensor::loadConf(uint16_t eepromAddress){
